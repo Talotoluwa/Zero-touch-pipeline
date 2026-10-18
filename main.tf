@@ -14,7 +14,7 @@ provider "aws" {
 
 # Configure the Security Group (Instance-level firewall)
 resource "aws_security_group" "web_sg" {
-  name        = "zero-touch-sg"
+  name        = "zero-touch-sg-v2"
   description = "Allow SSH and Flask application traffic"
 
   # Allow SSH for deployment
