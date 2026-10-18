@@ -12,12 +12,11 @@ provider "aws" {
   region = "us-east-1"
 }
 
-# Configure the Security Group (Instance-level firewall)
+## Configure the Security Group (Instance-level firewall)
 resource "aws_security_group" "web_sg" {
-  name        = "zero-touch-sg-v2"
-  description = "Allow SSH and Flask application traffic"
+  name        = "zero-touch-sg-v3" # Renamed to avoid duplicates
+  description = "Allow SSH and standard HTTP traffic"
 
-  # Allow SSH for deployment
   ingress {
     from_port   = 22
     to_port     = 22
@@ -25,15 +24,14 @@ resource "aws_security_group" "web_sg" {
     cidr_blocks = ["0.0.0.0/0"] 
   }
 
-  # Allow web traffic to our Flask app
+  # Open standard port 80 to bypass corporate firewalls
   ingress {
-    from_port   = 5000
-    to_port     = 5000
+    from_port   = 80
+    to_port     = 80
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Allow all outbound traffic (needed to download Docker)
   egress {
     from_port   = 0
     to_port     = 0
@@ -44,11 +42,11 @@ resource "aws_security_group" "web_sg" {
 
 # Provision the EC2 Instance
 resource "aws_instance" "app_server" {
-  ami           = "ami-0c7217cdde317cfec" # Ubuntu 22.04 LTS in us-east-1
-  instance_type = "t3.micro"              # Updated Free-tier eligible
+  ami           = "ami-0c7217cdde317cfec" 
+  instance_type = "t3.micro"              
   vpc_security_group_ids = [aws_security_group.web_sg.id]
 
-  # Bootstrap script to install Docker, pull your code, and run it
+  # Bootstrap script
   user_data = <<-EOF
               #!/bin/bash
               sudo apt-get update -y
@@ -57,13 +55,12 @@ resource "aws_instance" "app_server" {
               sudo systemctl enable docker
               sudo usermod -aG docker ubuntu
               
-              # Clone your public repository
               git clone https://github.com/Talotoluwa/Zero-touch-pipeline.git /home/ubuntu/app
               cd /home/ubuntu/app
               
-              # Build and run the Docker container
               sudo docker build -t zero-touch-app .
-              sudo docker run -d -p 5000:5000 zero-touch-app
+              # Route standard port 80 traffic to the container's port 5000
+              sudo docker run -d -p 80:5000 zero-touch-app
               EOF
 
   tags = {
