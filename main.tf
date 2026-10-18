@@ -48,22 +48,25 @@ resource "aws_instance" "app_server" {
   instance_type = "t2.micro"              # Free-tier eligible
   vpc_security_group_ids = [aws_security_group.web_sg.id]
 
-  # Bootstrap script to install Docker automatically
+  # Bootstrap script to install Docker, pull your code, and run it
   user_data = <<-EOF
               #!/bin/bash
               sudo apt-get update -y
-              sudo apt-get install docker.io -y
+              sudo apt-get install docker.io git -y
               sudo systemctl start docker
               sudo systemctl enable docker
               sudo usermod -aG docker ubuntu
+              
+              # Clone your public repository
+              git clone https://github.com/Talotoluwa/Zero-touch-pipeline.git /home/ubuntu/app
+              cd /home/ubuntu/app
+              
+              # Build and run the Docker container
+              sudo docker build -t zero-touch-app .
+              sudo docker run -d -p 5000:5000 zero-touch-app
               EOF
 
   tags = {
     Name = "ZeroTouchPipelineServer"
   }
-}
-
-# Output the public IP so we know where to view the app
-output "public_ip" {
-  value = aws_instance.app_server.public_ip
 }
