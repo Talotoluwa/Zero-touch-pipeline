@@ -1,0 +1,69 @@
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
+# Set the AWS Region
+provider "aws" {
+  region = "us-east-1"
+}
+
+# Configure the Security Group (Instance-level firewall)
+resource "aws_security_group" "web_sg" {
+  name        = "zero-touch-sg"
+  description = "Allow SSH and Flask application traffic"
+
+  # Allow SSH for deployment
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"] 
+  }
+
+  # Allow web traffic to our Flask app
+  ingress {
+    from_port   = 5000
+    to_port     = 5000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Allow all outbound traffic (needed to download Docker)
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# Provision the EC2 Instance
+resource "aws_instance" "app_server" {
+  ami           = "ami-0c7217cdde317cfec" # Ubuntu 22.04 LTS in us-east-1
+  instance_type = "t2.micro"              # Free-tier eligible
+  vpc_security_group_ids = [aws_security_group.web_sg.id]
+
+  # Bootstrap script to install Docker automatically
+  user_data = <<-EOF
+              #!/bin/bash
+              sudo apt-get update -y
+              sudo apt-get install docker.io -y
+              sudo systemctl start docker
+              sudo systemctl enable docker
+              sudo usermod -aG docker ubuntu
+              EOF
+
+  tags = {
+    Name = "ZeroTouchPipelineServer"
+  }
+}
+
+# Output the public IP so we know where to view the app
+output "public_ip" {
+  value = aws_instance.app_server.public_ip
+}
