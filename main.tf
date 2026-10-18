@@ -14,7 +14,7 @@ provider "aws" {
 
 ## Configure the Security Group (Instance-level firewall)
 resource "aws_security_group" "web_sg" {
-  name        = "zero-touch-sg-v4" # Renamed to avoid duplicates
+  name        = "zero-touch-sg-v5" # Renamed to avoid duplicates
   description = "Allow SSH and standard HTTP traffic"
 
   ingress {
